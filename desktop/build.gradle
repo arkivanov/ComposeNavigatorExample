@@ -1,0 +1,40 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
+plugins {
+    id 'kotlin-multiplatform'
+    id 'org.jetbrains.compose'
+}
+
+kotlin {
+    jvm {
+        withJava()
+    }
+
+    sourceSets {
+        jvmMain {
+            dependencies {
+                implementation(project(":screens"))
+                implementation(compose.desktop.currentOs)
+            }
+        }
+    }
+}
+
+compose {
+    desktop {
+        application {
+            mainClass = "com.arkivanov.composenavigatorexample.desktop.MainKt"
+
+            nativeDistributions {
+                targetFormats = EnumSet.of(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+                packageName = "ComposeNavigatorExample"
+
+                windows {
+                    menuGroup = "ComposeNavigatorExample"
+                    // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
+                    upgradeUuid = "E6C543A2-2C39-4534-8BA0-958BE83F4875"
+                }
+            }
+        }
+    }
+}

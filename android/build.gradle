@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'org.jetbrains.compose'
+}
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.3"
+
+    defaultConfig {
+        applicationId "com.example.myapplication"
+        minSdkVersion 21
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile ('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation"org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation(project(":navigator"))
+    implementation(project(":screens"))
+    implementation(compose.runtime)
+    implementation(compose.foundation)
+    implementation(compose.material)
+//    implementation "androidx.compose.material:material:$compose_jetpack_version"
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'com.arkivanov.decompose:decompose:0.1.7'
+}

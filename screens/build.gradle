@@ -1,0 +1,33 @@
+plugins {
+    id 'kotlin-multiplatform'
+    id 'kotlin-parcelize'
+    id 'com.android.library'
+    id 'org.jetbrains.compose'
+}
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.3"
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 30
+    }
+}
+
+kotlin {
+    android()
+    jvm()
+
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation(project(":navigator"))
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material)
+                implementation("com.arkivanov.decompose:decompose:0.1.7")
+            }
+        }
+    }
+}
