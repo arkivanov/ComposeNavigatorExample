@@ -28,6 +28,7 @@ compose {
             nativeDistributions {
                 targetFormats = EnumSet.of(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
                 packageName = "ComposeNavigatorExample"
+                packageVersion = "1.0.0"
 
                 windows {
                     menuGroup = "ComposeNavigatorExample"

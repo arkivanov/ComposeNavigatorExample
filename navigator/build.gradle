@@ -24,8 +24,8 @@ kotlin {
             dependencies {
                 implementation(compose.runtime)
                 implementation(compose.foundation)
-                implementation("com.arkivanov.decompose:decompose:0.1.7")
-                implementation("com.arkivanov.decompose:extensions-compose-jetbrains:0.1.7")
+                api("com.arkivanov.decompose:decompose:0.2.3")
+                api("com.arkivanov.decompose:extensions-compose-jetbrains:0.2.3")
             }
         }
     }

@@ -2,6 +2,10 @@ package com.arkivanov.composenavigatorexample.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Button
@@ -9,7 +13,10 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.arkivanov.composenavigatorexample.navigator.Navigator
+import androidx.compose.ui.unit.dp
+import com.arkivanov.composenavigatorexample.navigator.rememberRouter
+import com.arkivanov.decompose.extensions.compose.jetbrains.Children
+import com.arkivanov.decompose.extensions.compose.jetbrains.animation.child.crossfadeScale
 import com.arkivanov.decompose.pop
 import com.arkivanov.decompose.push
 import com.arkivanov.decompose.statekeeper.Parcelable
@@ -21,15 +28,24 @@ fun List(onItemClick: (String) -> Unit) {
 
     LazyColumn {
         items(items) { item ->
-            Text(text = item, modifier = Modifier.clickable { onItemClick(item) })
+            Text(
+                text = item,
+                modifier = Modifier
+                    .clickable { onItemClick(item) }
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
         }
     }
 }
 
 @Composable
 fun Details(text: String, onBack: () -> Unit) {
-    Column {
+    Column(modifier = Modifier.padding(16.dp)) {
         Text(text = text)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(onClick = onBack) {
             Text(text = "Back")
         }
@@ -38,18 +54,19 @@ fun Details(text: String, onBack: () -> Unit) {
 
 @Composable
 fun Main() {
-    Navigator<Screen>(
-        initialConfiguration = { Screen.List },
-        handleBackButton = true,
-        // Crossfade does not preserve UI state properly since (probably) 0.3.0-build146.
-        // Uncomment when https://issuetracker.google.com/u/1/issues/178729296 is fixed.
-//        animation = { screen, contentCallback ->
-//            Crossfade(targetState = screen, content = contentCallback)
-//        }
+    val router =
+        rememberRouter<Screen>(
+            initialConfiguration = { Screen.List },
+            handleBackButton = true
+        )
+
+    Children(
+        routerState = router.state,
+        animation = crossfadeScale()
     ) { screen ->
-        when (screen) {
-            is Screen.List -> List(onItemClick = { push(Screen.Details(text = it)) })
-            is Screen.Details -> Details(text = screen.text, onBack = { pop() })
+        when (val configuration = screen.configuration) {
+            is Screen.List -> List(onItemClick = { router.push(Screen.Details(text = it)) })
+            is Screen.Details -> Details(text = configuration.text, onBack = router::pop)
         }
     }
 }

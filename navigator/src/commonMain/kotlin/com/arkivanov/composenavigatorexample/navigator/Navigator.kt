@@ -2,16 +2,15 @@ package com.arkivanov.composenavigatorexample.navigator
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.ProvidableAmbient
+import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.AmbientSaveableStateRegistry
+import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.SaveableStateRegistry
-import androidx.compose.runtime.staticAmbientOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.DefaultComponentContext
-import com.arkivanov.decompose.Navigator
+import com.arkivanov.decompose.Router
 import com.arkivanov.decompose.backpressed.BackPressedDispatcher
-import com.arkivanov.decompose.extensions.compose.jetbrains.Children
 import com.arkivanov.decompose.lifecycle.Lifecycle
 import com.arkivanov.decompose.lifecycle.LifecycleRegistry
 import com.arkivanov.decompose.lifecycle.destroy
@@ -23,65 +22,42 @@ import com.arkivanov.decompose.statekeeper.StateKeeperDispatcher
 import kotlin.reflect.KClass
 
 @Composable
-inline fun <reified C : Parcelable> Navigator(
+fun <C : Parcelable> rememberRouter(
+    initialConfiguration: () -> C,
+    initialBackStack: () -> List<C> = ::emptyList,
+    configurationClass: KClass<out C>,
+    handleBackButton: Boolean = false
+): Router<C, Any> {
+    val context = rememberComponentContext()
+
+    return remember {
+        context.router(
+            initialConfiguration = initialConfiguration,
+            initialBackStack = initialBackStack,
+            configurationClass = configurationClass,
+            handleBackButton = handleBackButton
+        ) { configuration, _ -> configuration }
+    }
+}
+
+@Composable
+inline fun <reified C : Parcelable> rememberRouter(
     noinline initialConfiguration: () -> C,
     noinline initialBackStack: () -> List<C> = ::emptyList,
     handleBackButton: Boolean = false,
-    noinline animation: @Composable (C, @Composable (C) -> Unit) -> Unit = { configuration, contentCallback ->
-        contentCallback(
-            configuration
-        )
-    },
-    noinline content: @Composable Navigator<C>.(C) -> Unit
-) {
-    Navigator(
+): Router<C, Any> =
+    rememberRouter(
         initialConfiguration = initialConfiguration,
         initialBackStack = initialBackStack,
         configurationClass = C::class,
-        handleBackButton = handleBackButton,
-        animation = animation,
-        content = content
+        handleBackButton = handleBackButton
     )
-}
 
 @Composable
-fun <C : Parcelable> Navigator(
-    initialConfiguration: () -> C,
-    initialBackStack: () -> List<C> = ::emptyList, // <-- Add this line
-    configurationClass: KClass<out C>,
-    handleBackButton: Boolean = false,
-    animation: @Composable (C, @Composable (C) -> Unit) -> Unit = { configuration, contentCallback ->
-        contentCallback(
-            configuration
-        )
-    },
-    content: @Composable Navigator<C>.(C) -> Unit
-) {
-    val context = componentContext()
-
-    val router =
-        remember {
-            context.router(
-                initialConfiguration = initialConfiguration,
-                initialBackStack = initialBackStack, // <-- Add this line
-                configurationClass = configurationClass,
-                handleBackButton = handleBackButton
-            ) { configuration, _ -> configuration }
-        }
-
-    Children(
-        routerState = router.state,
-        animation = { _, configuration, contentCallback ->
-            animation(configuration) { contentCallback(it, it) }
-        }
-    ) { _, configuration -> router.content(configuration) }
-}
-
-@Composable
-fun componentContext(): ComponentContext {
-    val lifecycle = lifecycle()
-    val stateKeeper = stateKeeper()
-    val backPressedDispatcher = AmbientBackPressedDispatcher.current ?: BackPressedDispatcher()
+private fun rememberComponentContext(): ComponentContext {
+    val lifecycle = rememberLifecycle()
+    val stateKeeper = rememberStateKeeper()
+    val backPressedDispatcher = LocalBackPressedDispatcher.current ?: BackPressedDispatcher()
 
     return remember {
         DefaultComponentContext(
@@ -93,7 +69,7 @@ fun componentContext(): ComponentContext {
 }
 
 @Composable
-private fun lifecycle(): Lifecycle {
+private fun rememberLifecycle(): Lifecycle {
     val lifecycle = remember { LifecycleRegistry() }
 
     DisposableEffect(Unit) {
@@ -105,8 +81,8 @@ private fun lifecycle(): Lifecycle {
 }
 
 @Composable
-private fun stateKeeper(): StateKeeper {
-    val saveableStateRegistry: SaveableStateRegistry? = AmbientSaveableStateRegistry.current
+private fun rememberStateKeeper(): StateKeeper {
+    val saveableStateRegistry: SaveableStateRegistry? = LocalSaveableStateRegistry.current
 
     val dispatcher =
         remember {
@@ -123,7 +99,7 @@ private fun stateKeeper(): StateKeeper {
     return dispatcher
 }
 
-val AmbientBackPressedDispatcher: ProvidableAmbient<BackPressedDispatcher?> =
-    staticAmbientOf { null }
+val LocalBackPressedDispatcher: ProvidableCompositionLocal<BackPressedDispatcher?> =
+    staticCompositionLocalOf { null }
 
 private const val KEY_STATE = "STATE"
