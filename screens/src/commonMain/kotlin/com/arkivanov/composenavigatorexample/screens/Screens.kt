@@ -14,16 +14,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.arkivanov.composenavigatorexample.navigator.rememberRouter
-import com.arkivanov.decompose.extensions.compose.jetbrains.Children
-import com.arkivanov.decompose.extensions.compose.jetbrains.animation.child.crossfadeScale
-import com.arkivanov.decompose.pop
-import com.arkivanov.decompose.push
-import com.arkivanov.decompose.statekeeper.Parcelable
-import com.arkivanov.decompose.statekeeper.Parcelize
+import com.arkivanov.composenavigatorexample.navigator.ChildStack
+import com.arkivanov.decompose.extensions.compose.jetbrains.stack.animation.fade
+import com.arkivanov.decompose.extensions.compose.jetbrains.stack.animation.plus
+import com.arkivanov.decompose.extensions.compose.jetbrains.stack.animation.scale
+import com.arkivanov.decompose.extensions.compose.jetbrains.stack.animation.stackAnimation
+import com.arkivanov.decompose.router.stack.StackNavigation
+import com.arkivanov.decompose.router.stack.pop
+import com.arkivanov.decompose.router.stack.push
+import com.arkivanov.essenty.parcelable.Parcelable
+import com.arkivanov.essenty.parcelable.Parcelize
 
 @Composable
-fun List(onItemClick: (String) -> Unit) {
+fun ListContent(onItemClick: (String) -> Unit) {
     val items = remember { List(100) { "Item $it" } }
 
     LazyColumn {
@@ -40,7 +43,7 @@ fun List(onItemClick: (String) -> Unit) {
 }
 
 @Composable
-fun Details(text: String, onBack: () -> Unit) {
+fun DetailsContent(text: String, onBack: () -> Unit) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text(text = text)
 
@@ -53,20 +56,17 @@ fun Details(text: String, onBack: () -> Unit) {
 }
 
 @Composable
-fun Main() {
-    val router =
-        rememberRouter<Screen>(
-            initialConfiguration = { Screen.List },
-            handleBackButton = true
-        )
+fun MainContent() {
+    val navigation = remember { StackNavigation<Screen>() }
 
-    Children(
-        routerState = router.state,
-        animation = crossfadeScale()
+    ChildStack(
+        source = navigation,
+        initialStack = { listOf(Screen.List) },
+        animation = stackAnimation(fade() + scale()),
     ) { screen ->
-        when (val configuration = screen.configuration) {
-            is Screen.List -> List(onItemClick = { router.push(Screen.Details(text = it)) })
-            is Screen.Details -> Details(text = configuration.text, onBack = router::pop)
+        when (screen) {
+            is Screen.List -> ListContent(onItemClick = { navigation.push(Screen.Details(text = it)) })
+            is Screen.Details -> DetailsContent(text = screen.text, onBack = navigation::pop)
         }
     }
 }

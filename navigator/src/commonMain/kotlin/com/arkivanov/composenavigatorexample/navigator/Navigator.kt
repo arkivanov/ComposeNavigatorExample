@@ -1,105 +1,89 @@
 package com.arkivanov.composenavigatorexample.navigator
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
-import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import com.arkivanov.decompose.ComponentContext
-import com.arkivanov.decompose.DefaultComponentContext
-import com.arkivanov.decompose.Router
-import com.arkivanov.decompose.backpressed.BackPressedDispatcher
-import com.arkivanov.decompose.lifecycle.Lifecycle
-import com.arkivanov.decompose.lifecycle.LifecycleRegistry
-import com.arkivanov.decompose.lifecycle.destroy
-import com.arkivanov.decompose.lifecycle.resume
-import com.arkivanov.decompose.statekeeper.Parcelable
-import com.arkivanov.decompose.statekeeper.ParcelableContainer
-import com.arkivanov.decompose.statekeeper.StateKeeper
-import com.arkivanov.decompose.statekeeper.StateKeeperDispatcher
-import kotlin.reflect.KClass
+import com.arkivanov.decompose.ExperimentalDecomposeApi
+import com.arkivanov.decompose.extensions.compose.jetbrains.stack.Children
+import com.arkivanov.decompose.extensions.compose.jetbrains.stack.animation.StackAnimation
+import com.arkivanov.decompose.extensions.compose.jetbrains.subscribeAsState
+import com.arkivanov.decompose.router.stack.ChildStack
+import com.arkivanov.decompose.router.stack.StackNavigationSource
+import com.arkivanov.decompose.router.stack.childStack
+import com.arkivanov.essenty.parcelable.Parcelable
+
+val LocalComponentContext: ProvidableCompositionLocal<ComponentContext> =
+    staticCompositionLocalOf { error("Root component context was not provided") }
 
 @Composable
-fun <C : Parcelable> rememberRouter(
-    initialConfiguration: () -> C,
-    initialBackStack: () -> List<C> = ::emptyList,
-    configurationClass: KClass<out C>,
-    handleBackButton: Boolean = false
-): Router<C, Any> {
-    val context = rememberComponentContext()
-
-    return remember {
-        context.router(
-            initialConfiguration = initialConfiguration,
-            initialBackStack = initialBackStack,
-            configurationClass = configurationClass,
-            handleBackButton = handleBackButton
-        ) { configuration, _ -> configuration }
-    }
+fun ProvideComponentContext(componentContext: ComponentContext, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalComponentContext provides componentContext, content = content)
 }
 
+@OptIn(ExperimentalDecomposeApi::class)
 @Composable
-inline fun <reified C : Parcelable> rememberRouter(
-    noinline initialConfiguration: () -> C,
-    noinline initialBackStack: () -> List<C> = ::emptyList,
+inline fun <reified C : Parcelable> ChildStack(
+    source: StackNavigationSource<C>,
+    noinline initialStack: () -> List<C>,
+    modifier: Modifier = Modifier,
+    key: String = "DefaultChildStack",
     handleBackButton: Boolean = false,
-): Router<C, Any> =
-    rememberRouter(
-        initialConfiguration = initialConfiguration,
-        initialBackStack = initialBackStack,
-        configurationClass = C::class,
-        handleBackButton = handleBackButton
+    animation: StackAnimation<C, ComponentContext>? = null,
+    noinline content: @Composable (C) -> Unit,
+) {
+    ChildStack(
+        stack = rememberChildStack(
+            source = source,
+            initialStack = initialStack,
+            key = key,
+            handleBackButton = handleBackButton,
+        ),
+        modifier = modifier,
+        animation = animation,
+        content = content,
     )
+}
+
+@OptIn(ExperimentalDecomposeApi::class)
+@Composable
+fun <C : Any> ChildStack(
+    stack: State<ChildStack<C, ComponentContext>>,
+    modifier: Modifier = Modifier,
+    animation: StackAnimation<C, ComponentContext>? = null,
+    content: @Composable (C) -> Unit,
+) {
+    Children(
+        stack = stack.value,
+        modifier = modifier,
+        animation = animation,
+    ) { child ->
+        ProvideComponentContext(child.instance) {
+            content(child.configuration)
+        }
+    }
+}
 
 @Composable
-private fun rememberComponentContext(): ComponentContext {
-    val lifecycle = rememberLifecycle()
-    val stateKeeper = rememberStateKeeper()
-    val backPressedDispatcher = LocalBackPressedDispatcher.current ?: BackPressedDispatcher()
+inline fun <reified C : Parcelable> rememberChildStack(
+    source: StackNavigationSource<C>,
+    noinline initialStack: () -> List<C>,
+    key: String = "DefaultChildStack",
+    handleBackButton: Boolean = false,
+): State<ChildStack<C, ComponentContext>> {
+    val componentContext = LocalComponentContext.current
 
     return remember {
-        DefaultComponentContext(
-            lifecycle = lifecycle,
-            stateKeeper = stateKeeper,
-            backPressedDispatcher = backPressedDispatcher
+        componentContext.childStack(
+            source = source,
+            initialStack = initialStack,
+            key = key,
+            handleBackButton = handleBackButton,
+            childFactory = { _, childComponentContext -> childComponentContext },
         )
-    }
+    }.subscribeAsState()
 }
-
-@Composable
-private fun rememberLifecycle(): Lifecycle {
-    val lifecycle = remember { LifecycleRegistry() }
-
-    DisposableEffect(Unit) {
-        lifecycle.resume()
-        onDispose { lifecycle.destroy() }
-    }
-
-    return lifecycle
-}
-
-@Composable
-private fun rememberStateKeeper(): StateKeeper {
-    val saveableStateRegistry: SaveableStateRegistry? = LocalSaveableStateRegistry.current
-
-    val dispatcher =
-        remember {
-            StateKeeperDispatcher(saveableStateRegistry?.consumeRestored(KEY_STATE) as ParcelableContainer?)
-        }
-
-    if (saveableStateRegistry != null) {
-        DisposableEffect(Unit) {
-            val entry = saveableStateRegistry.registerProvider(KEY_STATE, dispatcher::save)
-            onDispose { entry.unregister() }
-        }
-    }
-
-    return dispatcher
-}
-
-val LocalBackPressedDispatcher: ProvidableCompositionLocal<BackPressedDispatcher?> =
-    staticCompositionLocalOf { null }
-
-private const val KEY_STATE = "STATE"

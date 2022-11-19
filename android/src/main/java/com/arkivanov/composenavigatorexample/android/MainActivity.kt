@@ -5,22 +5,21 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
-import androidx.compose.runtime.CompositionLocalProvider
-import com.arkivanov.composenavigatorexample.navigator.LocalBackPressedDispatcher
-import com.arkivanov.composenavigatorexample.screens.Main
-import com.arkivanov.decompose.backpressed.toBackPressedDispatcher
+import com.arkivanov.composenavigatorexample.navigator.ProvideComponentContext
+import com.arkivanov.composenavigatorexample.screens.MainContent
+import com.arkivanov.decompose.defaultComponentContext
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val backPressedDispatcher = onBackPressedDispatcher.toBackPressedDispatcher()
+        val rootComponentContext = defaultComponentContext()
 
         setContent {
             MaterialTheme {
                 Surface {
-                    CompositionLocalProvider(LocalBackPressedDispatcher provides backPressedDispatcher) {
-                        Main()
+                    ProvideComponentContext(rootComponentContext) {
+                        MainContent()
                     }
                 }
             }
